@@ -103,6 +103,56 @@ async def generate_flow(description: str) -> dict:
         return json.loads(raw)
 
 
+REFINE_SYSTEM_PROMPT = """\
+You are a workflow diagram editor. Given an existing workflow diagram and a user instruction, \
+return the updated diagram as JSON.
+
+Return ONLY valid JSON — no markdown fences, no explanations.
+
+Schema (same as original):
+{
+  "title": "short descriptive title",
+  "nodes": [
+    { "id": "1", "data": { "label": "Step name" }, "position": { "x": 0, "y": 0 } }
+  ],
+  "edges": [
+    { "id": "e1-2", "source": "1", "target": "2", "label": "optional" }
+  ]
+}
+
+Rules:
+- Preserve existing node ids where they still exist in the updated flow
+- Assign new unique string ids for any added nodes (continue the sequence)
+- Every edge source/target must reference an existing node id in the response
+- Keep labels concise (2-6 words)
+- Position x/y are layout hints only — space nodes ~120px apart vertically
+"""
+
+
+def _build_refine_prompt(title: str, nodes: list[dict], edges: list[dict], instruction: str) -> str:
+    current = json.dumps({'title': title, 'nodes': nodes, 'edges': edges}, indent=2)
+    return f'Current workflow:\n{current}\n\nInstruction: {instruction}'
+
+
+async def refine_flow(title: str, nodes: list[dict], edges: list[dict], instruction: str) -> dict:
+    async with _semaphore:
+        client = _get_client()
+        prompt = _build_refine_prompt(title, nodes, edges, instruction)
+        try:
+            response = await client.messages.create(
+                model='claude-sonnet-4-6',
+                max_tokens=2048,
+                system=REFINE_SYSTEM_PROMPT,
+                messages=[{'role': 'user', 'content': prompt}],
+            )
+            raw = response.content[0].text
+        except (anthropic.BadRequestError, anthropic.AuthenticationError) as e:
+            log.warning('Anthropic error during refine (%s)', e)
+            raise
+        raw = _strip_fences(raw)
+        return json.loads(raw)
+
+
 async def _ollama_generate(description: str) -> str:
     prompt = f'{SYSTEM_PROMPT}\n\nUser: {description}\nAssistant:'
     async with httpx.AsyncClient(timeout=120) as client:

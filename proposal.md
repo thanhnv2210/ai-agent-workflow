@@ -212,10 +212,10 @@ All persistence via localStorage:
 - [x] Export diagram as PNG (`html-to-image` library, dynamic import)
 - [x] `POST /api/execute` endpoint — `StreamingResponse` SSE generator with multi-round tool loop
 
-### Phase 3 — Polish
-- [ ] LangGraph-style stateful agent (multi-step flow refinement)
-- [ ] Share diagram via URL (base64-encoded JSON in query param)
-- [ ] Diagram templates (CI/CD pipeline, onboarding flow, incident response)
+### Phase 3 — Polish ✅ Complete (2026-05-29)
+- [x] Conversational flow refinement — `POST /api/refine` + `useFlowRefiner` hook + "Refine diagram" input in panel
+- [x] Share diagram via URL — base64 JSON in `?flow=` query param, copy-to-clipboard Share button, auto-load on mount
+- [x] Diagram templates — 5 built-in flows (CI/CD, onboarding, incident response, approval, feature dev); instant load with dagre layout
 
 ---
 

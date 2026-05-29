@@ -7,6 +7,7 @@ import { FlowGenerator } from '@/pages/FlowGenerator'
 import { History } from '@/pages/History'
 import { Settings } from '@/pages/Settings'
 import { useSavedFlows, type SavedFlow } from '@/hooks/useSavedFlows'
+import { getSharedFlow, clearShareParam } from '@/lib/share'
 
 type Tab = 'generator' | 'history' | 'settings'
 
@@ -18,7 +19,13 @@ const TABS: { id: Tab; label: string; Icon: typeof Workflow }[] = [
 
 function Shell() {
   const [tab, setTab] = useState<Tab>('generator')
-  const [openFlow, setOpenFlow] = useState<SavedFlow | undefined>(undefined)
+  const [openFlow, setOpenFlow] = useState<SavedFlow | undefined>(() => {
+    const shared = getSharedFlow()
+    if (!shared) return undefined
+    clearShareParam()
+    const now = new Date().toISOString()
+    return { id: 'shared-' + Date.now(), createdAt: now, updatedAt: now, ...shared }
+  })
   const { flows, saveFlow, deleteFlow } = useSavedFlows()
 
   function handleOpenFlow(flow: SavedFlow) {

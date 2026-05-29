@@ -1,11 +1,15 @@
 import { useCallback, useRef, useState } from 'react'
 import { useNodesState, useEdgesState, useReactFlow, type Node, type Edge } from '@xyflow/react'
-import { Download, Play, Save } from 'lucide-react'
+import { Download, Link, Play, Save } from 'lucide-react'
 import { FlowCanvas } from '@/components/FlowCanvas'
 import { GeneratorPanel } from '@/components/GeneratorPanel'
 import { ExecutionPanel } from '@/components/ExecutionPanel'
 import { useFlowGenerator } from '@/hooks/useFlowGenerator'
+import { useFlowRefiner } from '@/hooks/useFlowRefiner'
 import { useAgentExecutor } from '@/hooks/useAgentExecutor'
+import { encodeFlow } from '@/lib/share'
+import { applyDagreLayout } from '@/lib/layout'
+import type { FlowTemplate } from '@/lib/templates'
 import type { SavedFlow } from '@/hooks/useSavedFlows'
 
 interface FlowGeneratorProps {
@@ -19,12 +23,35 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
   const [title, setTitle] = useState(initialFlow?.title ?? '')
   const [savedId, setSavedId] = useState<string | null>(initialFlow?.id ?? null)
   const [showExecution, setShowExecution] = useState(false)
+  const [copied, setCopied] = useState(false)
   const { status, error, generate } = useFlowGenerator()
+  const { status: refineStatus, error: refineError, refine } = useFlowRefiner()
   const { events, narrative, isRunning, execute, clear } = useAgentExecutor()
   const { getNodes } = useReactFlow()
   const canvasRef = useRef<HTMLDivElement>(null)
 
   const hasFlow = nodes.length > 0
+
+  async function handleRefine(instruction: string) {
+    const result = await refine(title || 'Untitled flow', nodes, edges, instruction)
+    if (result) {
+      setNodes(result.nodes)
+      setEdges(result.edges)
+      setTitle(result.title)
+      setSavedId(null)
+    }
+  }
+
+  function handleLoadTemplate(template: FlowTemplate) {
+    const rawNodes = template.nodes.map(n => ({ ...n, position: { x: 0, y: 0 } }))
+    const layouted = applyDagreLayout(rawNodes, template.edges)
+    setNodes(layouted)
+    setEdges(template.edges)
+    setTitle(template.title)
+    setSavedId(null)
+    setShowExecution(false)
+    clear()
+  }
 
   async function handleGenerate(description: string) {
     const result = await generate(description)
@@ -51,6 +78,14 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
     await execute(title || 'Untitled flow', getNodes(), edges)
   }
 
+  async function handleShare() {
+    const encoded = encodeFlow(title || 'Untitled flow', nodes, edges)
+    const url = `${window.location.origin}${window.location.pathname}?flow=${encoded}`
+    await navigator.clipboard.writeText(url).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   async function handleExportPng() {
     if (!canvasRef.current) return
     const el = canvasRef.current.querySelector('.react-flow') as HTMLElement
@@ -72,7 +107,12 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
       <div className="w-80 shrink-0 border-r border-[var(--border)] bg-[var(--card)] p-4 overflow-y-auto">
         <GeneratorPanel
           onGenerate={handleGenerate}
+          onLoadTemplate={handleLoadTemplate}
+          onRefine={handleRefine}
           isLoading={status === 'loading'}
+          isRefining={refineStatus === 'loading'}
+          hasFlow={hasFlow}
+          refineError={refineError}
           error={error}
         />
       </div>
@@ -99,6 +139,14 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
                 placeholder="Untitled flow"
               />
               <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleShare}
+                  title="Copy share link"
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <Link size={13} />
+                  {copied ? 'Copied!' : 'Share'}
+                </button>
                 <button
                   onClick={handleExportPng}
                   title="Export as PNG"
