@@ -6,6 +6,8 @@ Type a description → Claude generates a structured flow → React Flow renders
 
 **Live demo:** (Phase 4 — deployment pending)
 
+**Docs:** [`docs/architecture.md`](docs/architecture.md) · [`docs/adr.md`](docs/adr.md) · [`docs/diagrams/`](docs/diagrams/)
+
 ---
 
 ## Features
@@ -188,13 +190,17 @@ Config is loaded from `.env.local` locally. CI/UAT inject env vars directly.
 - [x] Save/history (localStorage)
 - [x] Dark mode + font size system
 
-### Phase 2 — Agentic Extension
-- [ ] Claude tool use — execute workflow steps (generate GitHub Actions YAML, call APIs)
-- [ ] Execution log panel — stream agent reasoning + tool call results
-- [ ] Export diagram as PNG
+### Phase 2 — Agentic Extension (complete)
+- [x] Claude tool use — multi-round agentic loop with `write_artifact` + `log_step_analysis` tools
+- [x] Execution log panel — streaming step analyses, artifact code blocks, narrative summary
+- [x] Export diagram as PNG (`html-to-image`)
 
-### Phase 3 — Polish
-- [ ] LangGraph-style stateful refinement ("add an error handling branch")
-- [ ] Share via URL (base64 JSON in query param)
-- [ ] Diagram templates (CI/CD, onboarding, incident response)
-- [ ] Deploy to Vercel + Render
+### Phase 3 — Polish (complete)
+- [x] Conversational flow refinement — `POST /api/refine` + "Refine diagram" input
+- [x] Share via URL — base64 JSON in `?flow=` param, copy-to-clipboard button
+- [x] Diagram templates — 5 built-in flows (CI/CD, onboarding, incident response, approval, feature dev)
+
+### Phase 4 — Deployment
+- [ ] Authentication (NextAuth v5 + Supabase)
+- [ ] Deploy frontend to Vercel, ai-service to Render
+- [ ] Database-backed flow persistence and sharing short-links

@@ -1,0 +1,114 @@
+@startuml flow-generation
+!theme plain
+skinparam backgroundColor #0f0720
+skinparam defaultFontColor #e2e8f0
+skinparam defaultFontName "Helvetica"
+skinparam SequenceArrowColor #8b5cf6
+skinparam SequenceArrowFontColor #a78bfa
+skinparam SequenceLifeLineBorderColor #6d28d9
+skinparam SequenceBoxBorderColor #4c1d95
+skinparam SequenceBoxBackgroundColor #1a0f36
+skinparam SequenceParticipantBackgroundColor #1e1030
+skinparam SequenceParticipantBorderColor #7c3aed
+skinparam SequenceParticipantFontColor #e2e8f0
+skinparam NoteBackgroundColor #1a0f36
+skinparam NoteBorderColor #6d28d9
+skinparam NoteFontColor #c4b5fd
+
+title Flow Generation — Natural Language → Interactive Diagram
+
+actor "User" as user
+
+box "Browser" #1a0f36
+  participant "GeneratorPanel\n(React)" as gp
+  participant "useFlowGenerator\n(Hook)" as hook
+  participant "Zod + dagre\n(lib/)" as lib
+  participant "FlowCanvas\n(React Flow)" as canvas
+  database "localStorage" as ls
+end box
+
+box "AI Service  :8013" #1a0836
+  participant "FastAPI\nmain.py" as api
+  participant "llm.py" as llm
+end box
+
+box "Anthropic" #200a4a
+  participant "Claude\nSonnet 4.6" as claude
+end box
+
+== User triggers generation ==
+
+user -> gp : types description\nor picks template/chip
+
+alt Click "Generate" (Claude)
+  gp -> hook : generate(description)
+  hook -> api : POST /api/generate\n{ description }
+  api -> llm : generate_flow(description)
+  llm -> claude : messages.create()\nsystem=JSON_SCHEMA_PROMPT\nfew-shot examples + user text
+  claude --> llm : raw JSON string\n{ title, nodes, edges }
+  note right of llm
+    Strips markdown fences
+    defensively (Ollama may
+    add them)
+  end note
+  llm --> api : dict { title, nodes, edges }
+  api --> hook : 200 { title, nodes, edges }
+  hook -> lib : validateFlow(raw) [Zod]
+  note right of lib
+    Validates: nodes present,
+    edge sources/targets
+    reference existing node ids
+  end note
+  lib --> hook : FlowSchema result
+  hook -> lib : applyDagreLayout(nodes, edges)
+  note right of lib
+    dagre TB layout
+    NODE_WIDTH=200, NODE_HEIGHT=48
+    nodesep=60, ranksep=60
+    Overrides Claude position hints
+  end note
+  lib --> hook : layouted Node[]
+  hook --> gp : { title, nodes, edges }
+  gp -> canvas : setNodes() + setEdges()
+  canvas --> user : renders interactive diagram
+
+else Load Template (no API call)
+  user -> gp : clicks template
+  gp -> lib : applyDagreLayout(templateNodes, templateEdges)
+  lib --> gp : layouted nodes
+  gp -> canvas : setNodes() + setEdges()
+  canvas --> user : renders template diagram
+
+else Load from URL (?flow=…)
+  note over user, ls
+    On app mount: getSharedFlow() decodes
+    base64 JSON from ?flow= param
+    and sets as initialFlow
+  end note
+end
+
+== Auto-save ==
+
+canvas -> ls : debounced 500ms\nauto-save on node/edge change
+note right of ls
+  Key: "ai-agent-workflow:flows"
+  Saves full { id, title, nodes,
+  edges, createdAt, updatedAt }
+end note
+
+== Refine existing diagram ==
+
+user -> gp : types refinement instruction\nclicks "Refine diagram"
+gp -> hook : refine(title, nodes, edges, instruction)
+hook -> api : POST /api/refine\n{ title, nodes, edges, instruction }
+api -> llm : refine_flow(...)
+llm -> claude : messages.create()\nsystem=REFINE_PROMPT\ncurrent JSON + instruction
+claude --> llm : updated JSON { title, nodes, edges }
+llm --> api : dict
+api --> hook : 200 { title, nodes, edges }
+hook -> lib : validateFlow() + applyDagreLayout()
+hook --> gp : updated { title, nodes, edges }
+gp -> canvas : setNodes() + setEdges()
+canvas --> user : updated diagram
+
+@enduml

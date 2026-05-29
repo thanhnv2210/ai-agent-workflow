@@ -19,7 +19,21 @@
       "Bash(source ~/.zshrc)",
       "Bash(python3 -c \":*)",
       "Bash(source /Users/ThanhNguyen/AI_WS/ai-agent-workflow/ai-service/.venv/bin/activate)",
-      "Bash(python -c \"from app.main import app; print\\(''backend OK''\\)\")"
+      "Bash(python -c \"from app.main import app; print\\(''backend OK''\\)\")",
+      "Bash(for proj:*)",
+      "Bash(do dir=/Users/ThanhNguyen/AI_WS/$proj echo '=== $proj ===' ls $dir)",
+      "Bash(/dev/null echo:*)",
+      "Bash(/Users/ThanhNguyen/AI_WS/ai-operations-portal/frontend/public/favicon.svg:*)",
+      "Bash(__NEW_LINE_f6f8027762cbfa1f__ cat:*)",
+      "Bash(/Users/ThanhNguyen/AI_WS/architecture-practice/public/favicon.svg:*)",
+      "Bash(/Users/ThanhNguyen/AI_WS/company-simulator/frontend/public/favicon.svg:*)",
+      "Bash(/Users/ThanhNguyen/AI_WS/job-evolution/ui/public/favicon.svg:*)",
+      "Bash(find /Users/ThanhNguyen/AI_WS/english-learning-app/apps/web -maxdepth 4 \\\\\\(-name favicon* -o -name icon.svg -o -name icon.png \\\\\\))",
+      "Bash(grep -v .next echo --- ls /Users/ThanhNguyen/AI_WS/english-learning-app/apps/web/ echo --- ls /Users/ThanhNguyen/AI_WS/english-learning-app/apps/web/app/)",
+      "Bash(/Users/ThanhNguyen/AI_WS/english-learning-app/apps/web/src/app/icon.svg:*)",
+      "Bash(git -C /Users/ThanhNguyen/AI_WS/architecture-practice rev-parse --is-inside-work-tree)",
+      "Bash(git:*)",
+      "Bash(sort echo:*)"
     ]
   }
 }

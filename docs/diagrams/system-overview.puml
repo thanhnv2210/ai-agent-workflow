@@ -1,0 +1,67 @@
+@startuml system-overview
+!theme plain
+skinparam backgroundColor #0f0720
+skinparam defaultFontColor #e2e8f0
+skinparam defaultFontName "Helvetica"
+skinparam ArrowColor #8b5cf6
+skinparam ArrowFontColor #a78bfa
+skinparam NoteBorderColor #4c1d95
+skinparam NoteBackgroundColor #1e1030
+
+skinparam rectangle {
+  BackgroundColor #1e1030
+  BorderColor #6d28d9
+  FontColor #e2e8f0
+}
+skinparam database {
+  BackgroundColor #1e1030
+  BorderColor #6d28d9
+  FontColor #e2e8f0
+}
+skinparam cloud {
+  BackgroundColor #1c1438
+  BorderColor #7c3aed
+  FontColor #e2e8f0
+}
+skinparam actor {
+  BackgroundColor #4c1d95
+  BorderColor #7c3aed
+  FontColor #e2e8f0
+}
+
+title AI Agent Workflow — System Overview (C4 Container View)
+
+actor "User" as user
+
+rectangle "Browser" {
+  rectangle "Frontend\n──────────────────\nReact 19 + Vite 8\nTailwindCSS v4\nReact Flow (dagre)\nZod validation\n[localhost:3013]" as fe #1a0f36
+  database "localStorage\n──────────\nSaved flows\nTheme pref\nFont size" as ls #1a0f36
+}
+
+rectangle "AI Service\n──────────────────────\nPython FastAPI\nAnthropicSDK\nSSE streaming\n[localhost:8013]" as be #1a0f36
+
+cloud "Anthropic API\n─────────────\nclaude-sonnet-4-6\n(text + tool use)" as claude #2a1060
+cloud "Ollama\n(optional fallback)\n─────────────────\nmistral" as ollama #1a1a30 #5a6b90
+
+user -right-> fe : interacts via browser
+fe -down-> ls : read/write\n(Web Storage API)
+fe -right-> be : POST /api/generate\nPOST /api/execute\nPOST /api/refine\n(JSON + SSE)
+be -right-> claude : Anthropic SDK\n(HTTPS)
+be ..> ollama : fallback on\nauth error
+
+note bottom of fe
+  Pages: Generator · History · Settings
+  Hooks: useFlowGenerator · useAgentExecutor
+         useFlowRefiner · useSavedFlows
+  Lib:   schema.ts (Zod) · layout.ts (dagre)
+         share.ts (URL encode) · templates.ts
+end note
+
+note bottom of be
+  POST /api/generate → llm.py::generate_flow()
+  POST /api/execute  → executor.py::execute_flow()
+  POST /api/refine   → llm.py::refine_flow()
+  GET  /health
+end note
+
+@enduml

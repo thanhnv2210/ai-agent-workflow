@@ -1,0 +1,119 @@
+@startuml agent-execution
+!theme plain
+skinparam backgroundColor #0f0720
+skinparam defaultFontColor #e2e8f0
+skinparam defaultFontName "Helvetica"
+skinparam SequenceArrowColor #8b5cf6
+skinparam SequenceArrowFontColor #a78bfa
+skinparam SequenceLifeLineBorderColor #6d28d9
+skinparam SequenceBoxBorderColor #4c1d95
+skinparam SequenceBoxBackgroundColor #1a0f36
+skinparam SequenceParticipantBackgroundColor #1e1030
+skinparam SequenceParticipantBorderColor #7c3aed
+skinparam SequenceParticipantFontColor #e2e8f0
+skinparam NoteBackgroundColor #1a0f36
+skinparam NoteBorderColor #6d28d9
+skinparam NoteFontColor #c4b5fd
+skinparam LoopBorderColor #7c3aed
+skinparam LoopBackgroundColor #150a2a
+
+title Agent Execution — Agentic Tool-Use Loop (Phase 2)
+
+actor "User" as user
+
+box "Browser" #1a0f36
+  participant "FlowGenerator\n(React page)" as fg
+  participant "useAgentExecutor\n(Hook)" as hook
+  participant "ExecutionPanel\n(React)" as ep
+end box
+
+box "AI Service  :8013" #1a0836
+  participant "FastAPI\nmain.py" as api
+  participant "executor.py\nexecute_flow()" as exec
+end box
+
+box "Anthropic" #200a4a
+  participant "Claude\nSonnet 4.6" as claude
+end box
+
+== Trigger execution ==
+
+user -> fg : clicks "Execute"\n(current flow is active)
+fg -> hook : execute(title, nodes, edges)
+hook -> api : POST /api/execute\n{ title, nodes, edges }
+note right of api
+  StreamingResponse
+  media_type: text/event-stream
+  X-Accel-Buffering: no
+end note
+api -> exec : execute_flow()\n(asyncio.Semaphore(3))
+
+exec --> hook : SSE: { type:"status",\n  text:"Analyzing \\"<title>\\"…" }
+hook --> ep : show spinner + status text
+
+== Agentic loop (up to 6 rounds) ==
+
+loop Each round while stop_reason == "tool_use"
+
+  exec -> claude : messages.create()\n  model=claude-sonnet-4-6\n  max_tokens=4096\n  tools=[write_artifact,\n         log_step_analysis]
+
+  claude --> exec : content blocks\n(text + tool_use)
+
+  note right of claude
+    Tools available:
+    • log_step_analysis(step, action, notes)
+      → documents understanding of a step
+    • write_artifact(filename, language, content)
+      → generates a runnable file
+  end note
+
+  loop Each tool_use block in response
+
+    alt tool = "log_step_analysis"
+      exec --> hook : SSE: {\n  type:"tool_result",\n  tool:"log_step_analysis",\n  step, action, notes }
+      hook --> ep : renders step analysis card\n(chevron + step name + action + notes)
+
+    else tool = "write_artifact"
+      exec --> hook : SSE: {\n  type:"tool_result",\n  tool:"write_artifact",\n  filename, language, content }
+      hook --> ep : renders artifact block\n(filename header + code + download button)
+    end
+
+  end
+
+  exec -> exec : append assistant blocks\n+ tool_results to messages[]
+  note right of exec
+    Tool result content fed back:
+    "Artifact written: <filename>"
+    "Step analysis logged."
+  end note
+
+end
+
+== Final narrative (streaming) ==
+
+exec --> hook : SSE: { type:"status", text:"Writing summary…" }
+hook --> ep : update status text
+
+exec -> claude : messages.stream()\n  (same message history)\n  max_tokens=1024
+claude --> exec : text tokens (streaming)
+exec --> hook : SSE: { type:"token", text:"…" } ×N
+hook --> ep : append to narrative string\n(displayed as summary section)
+
+exec --> hook : SSE: { type:"done" }
+hook --> ep : show ✓ complete state\n(green CheckCircle2)
+
+== Error path ==
+
+note over exec, claude
+  On any Anthropic exception in any round:
+  SSE: { type:"error", text:"<message>" }
+  → ExecutionPanel shows red AlertCircle
+end note
+
+== Export ==
+
+user -> fg : clicks "Export PNG"
+fg -> fg : html-to-image toPng()\non .react-flow element
+fg --> user : downloads <title>.png
+
+@enduml
