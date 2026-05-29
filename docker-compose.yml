@@ -2,19 +2,19 @@ services:
   ai-service:
     build: ./ai-service
     ports:
-      - "8011:8011"
+      - "8013:8013"
     env_file:
       - ./ai-service/.env.local
     environment:
       - APP_ENV=local
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8013 --reload
     volumes:
       - ./ai-service:/app
 
   frontend:
     build: ./frontend
     ports:
-      - "3011:3011"
+      - "3013:3013"
     environment:
       - VITE_API_URL=http://localhost:8011
     depends_on:

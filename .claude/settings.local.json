@@ -11,7 +11,12 @@
       "Bash(python3.12 --version)",
       "Bash(python3.11 --version)",
       "Bash(python3.12 -m venv .venv)",
-      "Bash(python -c \"from app.main import app; print\\(''ai-service OK''\\)\")"
+      "Bash(python -c \"from app.main import app; print\\(''ai-service OK''\\)\")",
+      "Bash(ls:*)",
+      "Bash(curl -s http://localhost:8011/health)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl:*)",
+      "Bash(source ~/.zshrc)"
     ]
   }
 }

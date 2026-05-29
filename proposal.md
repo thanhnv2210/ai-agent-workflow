@@ -10,7 +10,7 @@ Convert natural language descriptions into interactive, editable workflow diagra
 
 | Layer | Decision |
 |---|---|
-| Framework | React 19 + Vite 8, port 3011 |
+| Framework | React 19 + Vite 8, port 3013 |
 | Styling | TailwindCSS v4 (`@tailwindcss/vite` plugin — not PostCSS) |
 | Components | shadcn/ui + lucide-react |
 | Diagram | React Flow (`@xyflow/react`) |

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     app_env: str = 'local'
     anthropic_api_key: str = ''
     ollama_base_url: str = 'http://localhost:11434'
-    cors_origins: str = 'http://localhost:3011'
+    cors_origins: str = 'http://localhost:3013'
 
     model_config = {'env_file': _env_file(), 'extra': 'ignore'}
 

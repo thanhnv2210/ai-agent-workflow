@@ -15,14 +15,14 @@ See `proposal.md` for full architecture, component plan, and phase breakdown.
 - **AI:** Anthropic SDK (streaming, Ollama fallback) via minimal FastAPI proxy
 - **Storage:** localStorage (MVP)
 - **Package manager:** pnpm
-- **Dev port:** 3011
+- **Dev port:** 3013 (frontend) / 8013 (ai-service)
 
 ## Commands
 
 ```bash
 # Frontend
 pnpm install
-pnpm dev          # port 3011
+pnpm dev          # port 3013
 pnpm build
 pnpm test         # vitest
 
@@ -30,7 +30,7 @@ pnpm test         # vitest
 cd ai-service
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8011
+uvicorn app.main:app --reload --port 8013
 
 # Docker
 docker-compose up -d
