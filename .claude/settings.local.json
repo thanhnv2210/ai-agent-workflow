@@ -17,7 +17,9 @@
       "Bash(python3 -m json.tool)",
       "Bash(curl:*)",
       "Bash(source ~/.zshrc)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(source /Users/ThanhNguyen/AI_WS/ai-agent-workflow/ai-service/.venv/bin/activate)",
+      "Bash(python -c \"from app.main import app; print\\(''backend OK''\\)\")"
     ]
   }
 }

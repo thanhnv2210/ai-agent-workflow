@@ -204,11 +204,13 @@ All persistence via localStorage:
 - [x] CORS fixed — `allow_credentials` removed; `.env.local` `CORS_ORIGINS=http://localhost:3013`
 - [x] Build passes clean (`pnpm build` ✓); API verified end-to-end with Claude API
 
-### Phase 2 — Agentic Extension
-- [ ] Claude tool use — define `generate_yaml`, `create_github_action`, `send_webhook` tools
-- [ ] "Execute" button per node → agent loop (plan → act → observe → reflect)
-- [ ] Execution log panel — stream Claude's reasoning + tool call results
-- [ ] Export diagram as PNG (React Flow `getViewport` + html2canvas)
+### Phase 2 — Agentic Extension ✅ Complete (2026-05-29)
+- [x] Claude tool use — `write_artifact` (generate files) + `log_step_analysis` (document steps) tools
+- [x] "Execute" button → multi-round agentic loop (plan → tools → observe → stream narrative)
+- [x] `ExecutionPanel` — streaming log with step analyses, artifact code blocks + download buttons, narrative summary
+- [x] `useAgentExecutor` hook — SSE consumer with typed events: `status | tool_result | token | done | error`
+- [x] Export diagram as PNG (`html-to-image` library, dynamic import)
+- [x] `POST /api/execute` endpoint — `StreamingResponse` SSE generator with multi-round tool loop
 
 ### Phase 3 — Polish
 - [ ] LangGraph-style stateful agent (multi-step flow refinement)

@@ -3,9 +3,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.config import settings
+from app.executor import execute_flow
 from app.llm import generate_flow
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +35,12 @@ class GenerateRequest(BaseModel):
     description: str
 
 
+class ExecuteRequest(BaseModel):
+    title: str
+    nodes: list[dict]
+    edges: list[dict]
+
+
 class GenerateResponse(BaseModel):
     title: str
     nodes: list[dict]
@@ -42,6 +50,17 @@ class GenerateResponse(BaseModel):
 @app.get('/health')
 async def health():
     return {'status': 'ok', 'env': settings.app_env}
+
+
+@app.post('/api/execute')
+async def execute(req: ExecuteRequest):
+    if not req.nodes:
+        raise HTTPException(status_code=422, detail='No nodes to execute')
+    return StreamingResponse(
+        execute_flow(req.title, req.nodes, req.edges),
+        media_type='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
+    )
 
 
 @app.post('/api/generate', response_model=GenerateResponse)

@@ -1,9 +1,11 @@
-import { useCallback, useState } from 'react'
-import { useNodesState, useEdgesState, type Node, type Edge } from '@xyflow/react'
-import { Save } from 'lucide-react'
+import { useCallback, useRef, useState } from 'react'
+import { useNodesState, useEdgesState, useReactFlow, type Node, type Edge } from '@xyflow/react'
+import { Download, Play, Save } from 'lucide-react'
 import { FlowCanvas } from '@/components/FlowCanvas'
 import { GeneratorPanel } from '@/components/GeneratorPanel'
+import { ExecutionPanel } from '@/components/ExecutionPanel'
 import { useFlowGenerator } from '@/hooks/useFlowGenerator'
+import { useAgentExecutor } from '@/hooks/useAgentExecutor'
 import type { SavedFlow } from '@/hooks/useSavedFlows'
 
 interface FlowGeneratorProps {
@@ -11,12 +13,16 @@ interface FlowGeneratorProps {
   initialFlow?: SavedFlow
 }
 
-export function FlowGenerator({ onSave, initialFlow }: FlowGeneratorProps) {
+function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialFlow?.nodes ?? [])
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow?.edges ?? [])
   const [title, setTitle] = useState(initialFlow?.title ?? '')
   const [savedId, setSavedId] = useState<string | null>(initialFlow?.id ?? null)
+  const [showExecution, setShowExecution] = useState(false)
   const { status, error, generate } = useFlowGenerator()
+  const { events, narrative, isRunning, execute, clear } = useAgentExecutor()
+  const { getNodes } = useReactFlow()
+  const canvasRef = useRef<HTMLDivElement>(null)
 
   const hasFlow = nodes.length > 0
 
@@ -27,6 +33,8 @@ export function FlowGenerator({ onSave, initialFlow }: FlowGeneratorProps) {
       setEdges(result.edges)
       setTitle(result.title)
       setSavedId(null)
+      setShowExecution(false)
+      clear()
     }
   }
 
@@ -34,6 +42,25 @@ export function FlowGenerator({ onSave, initialFlow }: FlowGeneratorProps) {
     if (!hasFlow) return
     const flow = onSave(title || 'Untitled flow', nodes, edges)
     setSavedId(flow.id)
+  }
+
+  async function handleExecute() {
+    if (!hasFlow || isRunning) return
+    setShowExecution(true)
+    clear()
+    await execute(title || 'Untitled flow', getNodes(), edges)
+  }
+
+  async function handleExportPng() {
+    if (!canvasRef.current) return
+    const el = canvasRef.current.querySelector('.react-flow') as HTMLElement
+    if (!el) return
+    const { toPng } = await import('html-to-image')
+    const dataUrl = await toPng(el, { backgroundColor: 'transparent' })
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = `${title || 'flow'}.png`
+    a.click()
   }
 
   const handleNodesUpdate = useCallback((updated: Node[]) => setNodes(updated), [setNodes])
@@ -51,7 +78,7 @@ export function FlowGenerator({ onSave, initialFlow }: FlowGeneratorProps) {
       </div>
 
       {/* Right canvas */}
-      <div className="flex-1 relative">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {!hasFlow ? (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
@@ -63,36 +90,79 @@ export function FlowGenerator({ onSave, initialFlow }: FlowGeneratorProps) {
           </div>
         ) : (
           <>
-            {/* Title + Save bar */}
-            <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-sm px-4 py-2">
+            {/* Toolbar */}
+            <div className="shrink-0 flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)]/80 backdrop-blur-sm px-4 py-2">
               <input
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="bg-transparent text-sm font-medium text-[var(--foreground)] focus:outline-none placeholder:text-[var(--muted-foreground)] w-64"
+                className="bg-transparent text-sm font-medium text-[var(--foreground)] focus:outline-none placeholder:text-[var(--muted-foreground)] w-56"
                 placeholder="Untitled flow"
               />
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
-              >
-                <Save size={13} />
-                {savedId ? 'Saved' : 'Save'}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleExportPng}
+                  title="Export as PNG"
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <Download size={13} />
+                  Export PNG
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                >
+                  <Save size={13} />
+                  {savedId ? 'Saved' : 'Save'}
+                </button>
+                <button
+                  onClick={handleExecute}
+                  disabled={isRunning}
+                  className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Play size={13} />
+                  {isRunning ? 'Running…' : 'Execute'}
+                </button>
+              </div>
             </div>
 
-            <div className="pt-10 h-full">
-              <FlowCanvas
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onNodesUpdate={handleNodesUpdate}
-                onEdgesConnect={handleEdgesConnect}
-              />
+            {/* Canvas + Execution panel split */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div ref={canvasRef} className={showExecution ? 'h-[55%]' : 'flex-1'}>
+                <FlowCanvas
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onNodesUpdate={handleNodesUpdate}
+                  onEdgesConnect={handleEdgesConnect}
+                />
+              </div>
+
+              {showExecution && (
+                <div className="h-[45%] overflow-hidden">
+                  <ExecutionPanel
+                    events={events}
+                    narrative={narrative}
+                    isRunning={isRunning}
+                    onClose={() => setShowExecution(false)}
+                  />
+                </div>
+              )}
             </div>
           </>
         )}
       </div>
     </div>
+  )
+}
+
+// ReactFlowProvider is required for useReactFlow() to work
+import { ReactFlowProvider } from '@xyflow/react'
+
+export function FlowGenerator(props: FlowGeneratorProps) {
+  return (
+    <ReactFlowProvider>
+      <FlowGeneratorInner {...props} />
+    </ReactFlowProvider>
   )
 }
