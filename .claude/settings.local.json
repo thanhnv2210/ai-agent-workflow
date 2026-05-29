@@ -13,7 +13,7 @@
       "Bash(python3.12 -m venv .venv)",
       "Bash(python -c \"from app.main import app; print\\(''ai-service OK''\\)\")",
       "Bash(ls:*)",
-      "Bash(curl -s http://localhost:8011/health)",
+      "Bash(curl -s http://localhost:8013/health)",
       "Bash(python3 -m json.tool)",
       "Bash(curl:*)",
       "Bash(source ~/.zshrc)"

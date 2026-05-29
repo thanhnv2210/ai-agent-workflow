@@ -16,6 +16,6 @@ services:
     ports:
       - "3013:3013"
     environment:
-      - VITE_API_URL=http://localhost:8011
+      - VITE_API_URL=http://localhost:8013
     depends_on:
       - ai-service

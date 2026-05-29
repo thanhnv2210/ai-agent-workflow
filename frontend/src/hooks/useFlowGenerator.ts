@@ -14,7 +14,7 @@ interface FlowGeneratorResult extends FlowGeneratorState {
   generate: (description: string) => Promise<{ title: string; nodes: Node[]; edges: Edge[] } | null>
 }
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8011'
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8013'
 
 export function useFlowGenerator(): FlowGeneratorResult {
   const [status, setStatus] = useState<Status>('idle')
