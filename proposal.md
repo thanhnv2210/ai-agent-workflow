@@ -187,16 +187,22 @@ All persistence via localStorage:
 
 ## Development Phases
 
-### Phase 1 — MVP
-- [ ] Scaffold: Vite + React 19 + TailwindCSS v4 + shadcn/ui + pnpm
-- [ ] `index.html` FOUC scripts (theme + font size)
-- [ ] `ThemeProvider`, `ThemeToggle`, `FontScaler`, `FontSizeControl`
-- [ ] FastAPI ai-service stub (proxy Anthropic key, `POST /api/generate`)
-- [ ] `useFlowGenerator` hook — Claude call, JSON parse, Zod validation
-- [ ] `FlowCanvas` — React Flow with dagre auto-layout
-- [ ] `GeneratorPanel` — textarea, example chips, streaming status
-- [ ] localStorage save/load (`useSavedFlows`)
-- [ ] Settings page (theme + font size)
+### Phase 1 — MVP ✅ Complete (2026-05-29)
+- [x] Scaffold: Vite + React 19 + TailwindCSS v4 + shadcn/ui + pnpm
+- [x] `index.html` FOUC scripts (theme + font size)
+- [x] `ThemeProvider`, `ThemeToggle`, `FontScaler`, `FontSizeControl`
+- [x] FastAPI ai-service (Python 3.12, proxy Anthropic key, `POST /api/generate`, `GET /health`)
+- [x] `useFlowGenerator` hook — Claude Sonnet 4.6 call, JSON parse, Zod validation
+- [x] `FlowCanvas` — React Flow with dagre auto-layout, MiniMap, Controls, auto-layout button
+- [x] `GeneratorPanel` — textarea, example chips, streaming status, error display
+- [x] localStorage save/load (`useSavedFlows`) — auto-save debounced 500ms + manual named snapshots
+- [x] Settings page (theme toggle + font size control)
+- [x] History page — saved diagrams list with open/delete
+- [x] App shell — top nav, tab routing (`Generator` / `History` / `Settings`)
+- [x] Port registry — frontend: 3013, ai-service: 8013
+- [x] Shell CLI — `aiflow-start`, `aiflow-stop`, `aiflow-restart`, `aiflow-status`, `aiflow-logs-fe`, `aiflow-logs-be`
+- [x] CORS fixed — `allow_credentials` removed; `.env.local` `CORS_ORIGINS=http://localhost:3013`
+- [x] Build passes clean (`pnpm build` ✓); API verified end-to-end with Claude API
 
 ### Phase 2 — Agentic Extension
 - [ ] Claude tool use — define `generate_yaml`, `create_github_action`, `send_webhook` tools
