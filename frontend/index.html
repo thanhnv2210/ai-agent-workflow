@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Workflow</title>
+    <!-- Dark mode FOUC prevention — runs before React hydrates -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('ai-agent-workflow:theme')
+          if (t !== 'light') document.documentElement.classList.add('dark')
+        } catch (e) {
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
+    <!-- Font size FOUC prevention — sets html font-size before first paint -->
+    <script>
+      (function(){try{
+        var s=localStorage.getItem('ai-agent-workflow:font-size');
+        var n=s?parseInt(s,10):NaN;
+        if(!n||isNaN(n)){
+          var w=screen.width;
+          n=w<768?16:w<1280?15:w<1440?14:w<1920?15:w<2560?16:w<3840?17:18;
+        }
+        document.documentElement.style.fontSize=n+'px';
+      }catch(e){}})();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

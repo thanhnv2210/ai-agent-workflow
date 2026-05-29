@@ -1,0 +1,17 @@
+# Python
+ai-service/.venv/
+ai-service/__pycache__/
+ai-service/app/__pycache__/
+ai-service/.env.local
+ai-service/.env.ci
+ai-service/.env.uat
+**/__pycache__/
+*.py[cod]
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Misc
+.DS_Store

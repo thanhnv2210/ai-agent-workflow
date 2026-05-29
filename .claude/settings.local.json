@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm create:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm build:*)",
+      "Bash(python3 -m venv .venv)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(python3.12 --version)",
+      "Bash(python3.11 --version)",
+      "Bash(python3.12 -m venv .venv)",
+      "Bash(python -c \"from app.main import app; print\\(''ai-service OK''\\)\")"
+    ]
+  }
+}

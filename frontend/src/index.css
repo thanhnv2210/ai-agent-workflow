@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/geist-mono/index.css";
+
+@theme {
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* Violet accent */
+  --color-primary: oklch(60% 0.2 280);
+  --color-primary-hover: oklch(55% 0.22 280);
+}
+
+@layer base {
+  :root {
+    --background: oklch(100% 0 0);
+    --foreground: oklch(15% 0 0);
+    --card: oklch(98% 0 0);
+    --card-foreground: oklch(15% 0 0);
+    --muted: oklch(95% 0 0);
+    --muted-foreground: oklch(50% 0 0);
+    --border: oklch(88% 0 0);
+    --input: oklch(88% 0 0);
+    --ring: oklch(60% 0.2 280);
+  }
+
+  .dark {
+    --background: oklch(13% 0.005 270);
+    --foreground: oklch(95% 0 0);
+    --card: oklch(17% 0.005 270);
+    --card-foreground: oklch(95% 0 0);
+    --muted: oklch(22% 0.005 270);
+    --muted-foreground: oklch(60% 0 0);
+    --border: oklch(28% 0.005 270);
+    --input: oklch(28% 0.005 270);
+    --ring: oklch(65% 0.2 280);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* React Flow dark mode overrides */
+.dark .react-flow__background {
+  background-color: var(--background);
+}
+.dark .react-flow__node {
+  color: var(--foreground);
+}
