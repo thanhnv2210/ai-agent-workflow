@@ -16,7 +16,8 @@ export interface ExecutionLog {
   flowId: string
   events: AgentEvent[]
   narrative: string
-  executedAt: string
+  createdAt: string
+  updatedAt: string
 }
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8013'

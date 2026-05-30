@@ -17,5 +17,6 @@ CREATE TABLE IF NOT EXISTS workflow.execution_logs (
     flow_id     UUID        REFERENCES workflow.flows(id) ON DELETE CASCADE,
     events      JSONB       NOT NULL DEFAULT '[]',
     narrative   TEXT        NOT NULL DEFAULT '',
-    executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
