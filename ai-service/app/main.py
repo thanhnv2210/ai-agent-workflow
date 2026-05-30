@@ -7,8 +7,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.config import settings
+from app.db.database import close_pool, get_pool
+from app.db.schema import MIGRATIONS
 from app.executor import execute_flow
 from app.llm import generate_flow, refine_flow
+from app.services import executions as execution_service
+from app.services import flows as flow_service
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -17,7 +21,13 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     log.info('AI Workflow service starting (env=%s)', settings.app_env)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        for sql in MIGRATIONS:
+            await conn.execute(sql)
+    log.info('Database migrations applied (schema: workflow)')
     yield
+    await close_pool()
     log.info('AI Workflow service shutting down')
 
 
@@ -30,6 +40,8 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
+
+# ── LLM request/response models ───────────────────────────────────────────────
 
 class GenerateRequest(BaseModel):
     description: str
@@ -54,10 +66,74 @@ class GenerateResponse(BaseModel):
     edges: list[dict]
 
 
+# ── Flow CRUD models ──────────────────────────────────────────────────────────
+
+class FlowCreate(BaseModel):
+    title: str
+    nodes: list[dict]
+    edges: list[dict]
+
+
+class FlowUpdate(BaseModel):
+    title: str | None = None
+    nodes: list[dict] | None = None
+    edges: list[dict] | None = None
+
+
+# ── Execution log models ──────────────────────────────────────────────────────
+
+class SaveExecutionRequest(BaseModel):
+    events: list[dict]
+    narrative: str
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
+
 @app.get('/health')
 async def health():
     return {'status': 'ok', 'env': settings.app_env}
 
+
+# ── Flows ─────────────────────────────────────────────────────────────────────
+
+@app.get('/api/flows')
+async def get_flows():
+    return await flow_service.list_flows()
+
+
+@app.post('/api/flows', status_code=201)
+async def create_flow(req: FlowCreate):
+    return await flow_service.create_flow(req.title, req.nodes, req.edges)
+
+
+@app.put('/api/flows/{flow_id}')
+async def update_flow(flow_id: str, req: FlowUpdate):
+    result = await flow_service.update_flow(flow_id, req.title, req.nodes, req.edges)
+    if not result:
+        raise HTTPException(status_code=404, detail='Flow not found')
+    return result
+
+
+@app.delete('/api/flows/{flow_id}', status_code=204)
+async def delete_flow(flow_id: str):
+    deleted = await flow_service.delete_flow(flow_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail='Flow not found')
+
+
+# ── Execution logs ────────────────────────────────────────────────────────────
+
+@app.post('/api/flows/{flow_id}/executions', status_code=201)
+async def save_execution(flow_id: str, req: SaveExecutionRequest):
+    return await execution_service.save_execution(flow_id, req.events, req.narrative)
+
+
+@app.get('/api/flows/{flow_id}/executions')
+async def get_executions(flow_id: str):
+    return await execution_service.list_executions(flow_id)
+
+
+# ── LLM endpoints ─────────────────────────────────────────────────────────────
 
 @app.post('/api/execute')
 async def execute(req: ExecuteRequest):

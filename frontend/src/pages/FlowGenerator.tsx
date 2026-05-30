@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNodesState, useEdgesState, useReactFlow, type Node, type Edge } from '@xyflow/react'
 import { Download, Link, Play, Save } from 'lucide-react'
 import { FlowCanvas } from '@/components/FlowCanvas'
@@ -6,18 +6,19 @@ import { GeneratorPanel } from '@/components/GeneratorPanel'
 import { ExecutionPanel } from '@/components/ExecutionPanel'
 import { useFlowGenerator } from '@/hooks/useFlowGenerator'
 import { useFlowRefiner } from '@/hooks/useFlowRefiner'
-import { useAgentExecutor, type ToolResultEvent } from '@/hooks/useAgentExecutor'
+import { useAgentExecutor, type AgentEvent, type ToolResultEvent } from '@/hooks/useAgentExecutor'
 import { encodeFlow } from '@/lib/share'
 import { applyDagreLayout } from '@/lib/layout'
 import type { FlowTemplate } from '@/lib/templates'
 import type { SavedFlow } from '@/hooks/useSavedFlows'
 
 interface FlowGeneratorProps {
-  onSave: (title: string, nodes: Node[], edges: Edge[]) => SavedFlow
+  onSave: (title: string, nodes: Node[], edges: Edge[]) => Promise<SavedFlow>
+  onSaveExecution?: (flowId: string, events: AgentEvent[], narrative: string) => Promise<void>
   initialFlow?: SavedFlow
 }
 
-function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
+function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGeneratorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialFlow?.nodes ?? [])
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow?.edges ?? [])
   const [title, setTitle] = useState(initialFlow?.title ?? '')
@@ -65,9 +66,9 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!hasFlow) return
-    const flow = onSave(title || 'Untitled flow', nodes, edges)
+    const flow = await onSave(title || 'Untitled flow', nodes, edges)
     setSavedId(flow.id)
   }
 
@@ -100,6 +101,18 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
 
   const handleNodesUpdate = useCallback((updated: Node[]) => setNodes(updated), [setNodes])
   const handleEdgesConnect = useCallback((updated: Edge[]) => setEdges(updated), [setEdges])
+
+  // Save execution log to DB when execution completes and the flow has been saved
+  const prevIsRunning = useRef(false)
+  useEffect(() => {
+    if (prevIsRunning.current && !isRunning && savedId && onSaveExecution) {
+      const isDone = events.some((e: AgentEvent) => e.type === 'done')
+      if (isDone) {
+        onSaveExecution(savedId, events, narrative).catch(() => {})
+      }
+    }
+    prevIsRunning.current = isRunning
+  }, [isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { activeNodeId, completedNodeIds } = useMemo(() => {
     const analyses = events.filter(

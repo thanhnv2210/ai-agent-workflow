@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { Node, Edge } from '@xyflow/react'
+import type { AgentEvent } from '@/hooks/useAgentExecutor'
 
 export interface SavedFlow {
   id: string
@@ -10,61 +11,63 @@ export interface SavedFlow {
   updatedAt: string
 }
 
-const STORAGE_KEY = 'ai-agent-workflow:flows'
-
-function loadFlows(): SavedFlow[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as SavedFlow[]) : []
-  } catch {
-    return []
-  }
+export interface ExecutionLog {
+  id: string
+  flowId: string
+  events: AgentEvent[]
+  narrative: string
+  executedAt: string
 }
 
-function persistFlows(flows: SavedFlow[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(flows))
-  } catch {}
-}
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8013'
 
 export function useSavedFlows() {
-  const [flows, setFlows] = useState<SavedFlow[]>(loadFlows)
-  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [flows, setFlows] = useState<SavedFlow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    persistFlows(flows)
-  }, [flows])
+    fetch(`${API_BASE}/api/flows`)
+      .then(r => r.json())
+      .then((data: SavedFlow[]) => setFlows(data))
+      .catch(() => {})
+      .finally(() => setIsLoading(false))
+  }, [])
 
-  const saveFlow = useCallback((title: string, nodes: Node[], edges: Edge[]): SavedFlow => {
-    const now = new Date().toISOString()
-    const flow: SavedFlow = {
-      id: crypto.randomUUID(),
-      title,
-      nodes,
-      edges,
-      createdAt: now,
-      updatedAt: now,
-    }
+  const saveFlow = useCallback(async (title: string, nodes: Node[], edges: Edge[]): Promise<SavedFlow> => {
+    const res = await fetch(`${API_BASE}/api/flows`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, nodes, edges }),
+    })
+    if (!res.ok) throw new Error(`Failed to save flow: ${res.status}`)
+    const flow: SavedFlow = await res.json()
     setFlows(prev => [flow, ...prev])
     return flow
   }, [])
 
-  const updateFlow = useCallback((id: string, nodes: Node[], edges: Edge[]) => {
-    setFlows(prev =>
-      prev.map(f =>
-        f.id === id ? { ...f, nodes, edges, updatedAt: new Date().toISOString() } : f,
-      ),
-    )
+  const updateFlow = useCallback(async (id: string, nodes: Node[], edges: Edge[], title?: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/api/flows/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, nodes, edges }),
+    })
+    if (!res.ok) return
+    const updated: SavedFlow = await res.json()
+    setFlows(prev => prev.map(f => f.id === id ? updated : f))
   }, [])
 
-  const autoSave = useCallback((id: string, nodes: Node[], edges: Edge[]) => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
-    autoSaveTimer.current = setTimeout(() => updateFlow(id, nodes, edges), 500)
-  }, [updateFlow])
-
-  const deleteFlow = useCallback((id: string) => {
+  const deleteFlow = useCallback(async (id: string): Promise<void> => {
+    await fetch(`${API_BASE}/api/flows/${id}`, { method: 'DELETE' })
     setFlows(prev => prev.filter(f => f.id !== id))
   }, [])
 
-  return { flows, saveFlow, updateFlow, autoSave, deleteFlow }
+  const saveExecution = useCallback(async (flowId: string, events: AgentEvent[], narrative: string): Promise<void> => {
+    await fetch(`${API_BASE}/api/flows/${flowId}/executions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events, narrative }),
+    })
+  }, [])
+
+  return { flows, isLoading, saveFlow, updateFlow, deleteFlow, saveExecution }
 }

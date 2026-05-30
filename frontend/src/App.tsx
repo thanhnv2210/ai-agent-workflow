@@ -26,7 +26,7 @@ function Shell() {
     const now = new Date().toISOString()
     return { id: 'shared-' + Date.now(), createdAt: now, updatedAt: now, ...shared }
   })
-  const { flows, saveFlow, deleteFlow } = useSavedFlows()
+  const { flows, saveFlow, deleteFlow, saveExecution } = useSavedFlows()
 
   function handleOpenFlow(flow: SavedFlow) {
     setOpenFlow(flow)
@@ -76,6 +76,7 @@ function Shell() {
           <FlowGenerator
             key={openFlow?.id ?? 'new'}
             onSave={saveFlow}
+            onSaveExecution={saveExecution}
             initialFlow={openFlow}
           />
         )}
