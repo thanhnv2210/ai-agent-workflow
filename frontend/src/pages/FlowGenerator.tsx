@@ -8,7 +8,7 @@ import { useFlowGenerator } from '@/hooks/useFlowGenerator'
 import { useFlowRefiner } from '@/hooks/useFlowRefiner'
 import { useAgentExecutor, type AgentEvent, type ToolResultEvent } from '@/hooks/useAgentExecutor'
 import { encodeFlow } from '@/lib/share'
-import { applyDagreLayout } from '@/lib/layout'
+import { applyLayout, applyDagreLayout, type LayoutDirection } from '@/lib/layout'
 import type { FlowTemplate } from '@/lib/templates'
 import type { SavedFlow } from '@/hooks/useSavedFlows'
 
@@ -25,6 +25,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
   const [savedId, setSavedId] = useState<string | null>(initialFlow?.id ?? null)
   const [showExecution, setShowExecution] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('TB')
   const { status, error, generate } = useFlowGenerator()
   const { status: refineStatus, error: refineError, refine } = useFlowRefiner()
   const { events, narrative, isRunning, execute, clear } = useAgentExecutor()
@@ -45,7 +46,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
 
   function handleLoadTemplate(template: FlowTemplate) {
     const rawNodes = template.nodes.map(n => ({ ...n, position: { x: 0, y: 0 } }))
-    const layouted = applyDagreLayout(rawNodes, template.edges)
+    const layouted = applyLayout(rawNodes, template.edges, layoutDirection)
     setNodes(layouted)
     setEdges(template.edges)
     setTitle(template.title)
@@ -57,7 +58,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
   async function handleGenerate(description: string) {
     const result = await generate(description)
     if (result) {
-      setNodes(result.nodes)
+      setNodes(applyLayout(result.nodes, result.edges, layoutDirection))
       setEdges(result.edges)
       setTitle(result.title)
       setSavedId(null)
@@ -215,6 +216,8 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
                   onEdgesChange={onEdgesChange}
                   onNodesUpdate={handleNodesUpdate}
                   onEdgesConnect={handleEdgesConnect}
+                  layoutDirection={layoutDirection}
+                  onLayoutChange={setLayoutDirection}
                   activeNodeId={activeNodeId}
                   completedNodeIds={completedNodeIds}
                 />

@@ -14,8 +14,14 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useTheme } from '@/components/ThemeProvider'
-import { applyDagreLayout } from '@/lib/layout'
-import { LayoutDashboard } from 'lucide-react'
+import { applyLayout, type LayoutDirection } from '@/lib/layout'
+import { AlignEndHorizontal, AlignEndVertical, Shuffle } from 'lucide-react'
+
+const LAYOUT_OPTIONS: { dir: LayoutDirection; label: string; Icon: typeof Shuffle }[] = [
+  { dir: 'TB',      label: 'Vertical',   Icon: AlignEndVertical },
+  { dir: 'LR',      label: 'Horizontal', Icon: AlignEndHorizontal },
+  { dir: 'zigzag',  label: 'Zigzag',     Icon: Shuffle },
+]
 
 interface FlowCanvasProps {
   nodes: Node[]
@@ -24,6 +30,8 @@ interface FlowCanvasProps {
   onEdgesChange: OnEdgesChange
   onEdgesConnect?: (edges: Edge[]) => void
   onNodesUpdate?: (nodes: Node[]) => void
+  layoutDirection?: LayoutDirection
+  onLayoutChange?: (dir: LayoutDirection) => void
   activeNodeId?: string
   completedNodeIds?: Set<string>
 }
@@ -35,6 +43,8 @@ export function FlowCanvas({
   onEdgesChange,
   onEdgesConnect,
   onNodesUpdate,
+  layoutDirection = 'TB',
+  onLayoutChange,
   activeNodeId,
   completedNodeIds,
 }: FlowCanvasProps) {
@@ -60,23 +70,31 @@ export function FlowCanvas({
     [edges, onEdgesConnect],
   )
 
-  function handleAutoLayout() {
-    if (onNodesUpdate) {
-      onNodesUpdate(applyDagreLayout(nodes, edges))
-    }
+  function handleLayoutClick(dir: LayoutDirection) {
+    if (onNodesUpdate) onNodesUpdate(applyLayout(nodes, edges, dir))
+    if (onLayoutChange) onLayoutChange(dir)
   }
 
   return (
     <div className="relative w-full h-full">
-      {/* Auto-layout button */}
-      <button
-        onClick={handleAutoLayout}
-        title="Auto-layout"
-        className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors shadow-sm"
-      >
-        <LayoutDashboard size={13} />
-        Auto layout
-      </button>
+      {/* Layout direction picker */}
+      <div className="absolute top-3 right-3 z-10 flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--card)] p-1 shadow-sm">
+        {LAYOUT_OPTIONS.map(({ dir, label, Icon }) => (
+          <button
+            key={dir}
+            onClick={() => handleLayoutClick(dir)}
+            title={label}
+            className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-xs transition-colors ${
+              layoutDirection === dir
+                ? 'bg-violet-600 text-white'
+                : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]'
+            }`}
+          >
+            <Icon size={13} />
+            {label}
+          </button>
+        ))}
+      </div>
 
       <ReactFlow
         nodes={displayNodes}
