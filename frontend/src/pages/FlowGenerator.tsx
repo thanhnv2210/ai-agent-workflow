@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useNodesState, useEdgesState, useReactFlow, type Node, type Edge } from '@xyflow/react'
 import { Download, Link, Play, Save } from 'lucide-react'
 import { FlowCanvas } from '@/components/FlowCanvas'
@@ -6,7 +6,7 @@ import { GeneratorPanel } from '@/components/GeneratorPanel'
 import { ExecutionPanel } from '@/components/ExecutionPanel'
 import { useFlowGenerator } from '@/hooks/useFlowGenerator'
 import { useFlowRefiner } from '@/hooks/useFlowRefiner'
-import { useAgentExecutor } from '@/hooks/useAgentExecutor'
+import { useAgentExecutor, type ToolResultEvent } from '@/hooks/useAgentExecutor'
 import { encodeFlow } from '@/lib/share'
 import { applyDagreLayout } from '@/lib/layout'
 import type { FlowTemplate } from '@/lib/templates'
@@ -101,6 +101,25 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
   const handleNodesUpdate = useCallback((updated: Node[]) => setNodes(updated), [setNodes])
   const handleEdgesConnect = useCallback((updated: Edge[]) => setEdges(updated), [setEdges])
 
+  const { activeNodeId, completedNodeIds } = useMemo(() => {
+    const analyses = events.filter(
+      (e): e is ToolResultEvent => e.type === 'tool_result' && e.tool === 'log_step_analysis',
+    )
+    if (!analyses.length) return { activeNodeId: undefined, completedNodeIds: new Set<string>() }
+
+    const isDone = events.some(e => e.type === 'done')
+    const findId = (step?: string) => nodes.find(n => String(n.data.label) === step)?.id
+
+    const completedNodeIds = new Set(
+      (isDone ? analyses : analyses.slice(0, -1))
+        .map(e => findId(e.step))
+        .filter((id): id is string => !!id),
+    )
+    const activeNodeId = isDone ? undefined : findId(analyses.at(-1)?.step)
+
+    return { activeNodeId, completedNodeIds }
+  }, [events, nodes])
+
   return (
     <div className="flex h-full">
       {/* Left panel */}
@@ -183,6 +202,8 @@ function FlowGeneratorInner({ onSave, initialFlow }: FlowGeneratorProps) {
                   onEdgesChange={onEdgesChange}
                   onNodesUpdate={handleNodesUpdate}
                   onEdgesConnect={handleEdgesConnect}
+                  activeNodeId={activeNodeId}
+                  completedNodeIds={completedNodeIds}
                 />
               </div>
 

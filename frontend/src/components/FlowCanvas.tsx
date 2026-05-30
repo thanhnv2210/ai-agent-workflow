@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   ReactFlow,
   Background,
@@ -24,6 +24,8 @@ interface FlowCanvasProps {
   onEdgesChange: OnEdgesChange
   onEdgesConnect?: (edges: Edge[]) => void
   onNodesUpdate?: (nodes: Node[]) => void
+  activeNodeId?: string
+  completedNodeIds?: Set<string>
 }
 
 export function FlowCanvas({
@@ -33,8 +35,21 @@ export function FlowCanvas({
   onEdgesChange,
   onEdgesConnect,
   onNodesUpdate,
+  activeNodeId,
+  completedNodeIds,
 }: FlowCanvasProps) {
   const { theme } = useTheme()
+
+  const displayNodes = useMemo(() => {
+    if (!activeNodeId && !completedNodeIds?.size) return nodes
+    return nodes.map(node => {
+      const classes: string[] = []
+      if (node.id === activeNodeId) classes.push('sim-active')
+      else if (completedNodeIds?.has(node.id)) classes.push('sim-done')
+      if (!classes.length) return node
+      return { ...node, className: [node.className, ...classes].filter(Boolean).join(' ') }
+    })
+  }, [nodes, activeNodeId, completedNodeIds])
 
   const onConnect: OnConnect = useCallback(
     params => {
@@ -64,7 +79,7 @@ export function FlowCanvas({
       </button>
 
       <ReactFlow
-        nodes={nodes}
+        nodes={displayNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
