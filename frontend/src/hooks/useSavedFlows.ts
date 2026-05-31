@@ -14,6 +14,7 @@ export interface SavedFlow {
 export interface ExecutionLog {
   id: string
   flowId: string
+  version: number
   events: AgentEvent[]
   narrative: string
   createdAt: string
@@ -70,5 +71,9 @@ export function useSavedFlows() {
     })
   }, [])
 
-  return { flows, isLoading, saveFlow, updateFlow, deleteFlow, saveExecution }
+  const deleteExecution = useCallback(async (flowId: string, executionId: string): Promise<void> => {
+    await fetch(`${API_BASE}/api/flows/${flowId}/executions/${executionId}`, { method: 'DELETE' })
+  }, [])
+
+  return { flows, isLoading, saveFlow, updateFlow, deleteFlow, saveExecution, deleteExecution }
 }

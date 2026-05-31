@@ -133,6 +133,13 @@ async def get_executions(flow_id: str):
     return await execution_service.list_executions(flow_id)
 
 
+@app.delete('/api/flows/{flow_id}/executions/{execution_id}', status_code=204)
+async def delete_execution(flow_id: str, execution_id: str):
+    deleted = await execution_service.delete_execution(execution_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail='Execution not found')
+
+
 # ── LLM endpoints ─────────────────────────────────────────────────────────────
 
 @app.post('/api/execute')

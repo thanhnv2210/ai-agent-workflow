@@ -1,31 +1,42 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNodesState, useEdgesState, useReactFlow, type Node, type Edge } from '@xyflow/react'
-import { Download, Link, Play, Save } from 'lucide-react'
+import { Download, History as HistoryIcon, Link, Play, Save } from 'lucide-react'
 import { FlowCanvas } from '@/components/FlowCanvas'
 import { GeneratorPanel } from '@/components/GeneratorPanel'
 import { ExecutionPanel } from '@/components/ExecutionPanel'
+import { ExecutionLogsPanel } from '@/components/ExecutionLogsPanel'
 import { useFlowGenerator } from '@/hooks/useFlowGenerator'
 import { useFlowRefiner } from '@/hooks/useFlowRefiner'
 import { useAgentExecutor, type AgentEvent, type ToolResultEvent } from '@/hooks/useAgentExecutor'
 import { encodeFlow } from '@/lib/share'
-import { applyLayout, applyDagreLayout, type LayoutDirection } from '@/lib/layout'
+import { applyLayout, type LayoutDirection } from '@/lib/layout'
 import type { FlowTemplate } from '@/lib/templates'
-import type { SavedFlow } from '@/hooks/useSavedFlows'
+import type { SavedFlow, ExecutionLog } from '@/hooks/useSavedFlows'
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8013'
 
 interface FlowGeneratorProps {
   onSave: (title: string, nodes: Node[], edges: Edge[]) => Promise<SavedFlow>
   onSaveExecution?: (flowId: string, events: AgentEvent[], narrative: string) => Promise<void>
+  onDeleteExecution?: (flowId: string, executionId: string) => Promise<void>
   initialFlow?: SavedFlow
 }
 
-function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGeneratorProps) {
+function FlowGeneratorInner({ onSave, onSaveExecution, onDeleteExecution, initialFlow }: FlowGeneratorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialFlow?.nodes ?? [])
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow?.edges ?? [])
   const [title, setTitle] = useState(initialFlow?.title ?? '')
   const [savedId, setSavedId] = useState<string | null>(initialFlow?.id ?? null)
-  const [showExecution, setShowExecution] = useState(false)
   const [copied, setCopied] = useState(false)
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('TB')
+
+  // Bottom panel: 'none' | 'live' (current execution) | 'logs' (history)
+  const [activePanel, setActivePanel] = useState<'none' | 'live' | 'logs'>('none')
+
+  // Execution history for this flow
+  const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
+
   const { status, error, generate } = useFlowGenerator()
   const { status: refineStatus, error: refineError, refine } = useFlowRefiner()
   const { events, narrative, isRunning, execute, clear } = useAgentExecutor()
@@ -33,6 +44,33 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
   const canvasRef = useRef<HTMLDivElement>(null)
 
   const hasFlow = nodes.length > 0
+
+  // Fetch execution logs whenever the saved flow changes
+  useEffect(() => {
+    if (!savedId) { setExecutionLogs([]); return }
+    setLogsLoading(true)
+    fetch(`${API_BASE}/api/flows/${savedId}/executions`)
+      .then(r => r.json())
+      .then((data: ExecutionLog[]) => setExecutionLogs(data))
+      .catch(() => {})
+      .finally(() => setLogsLoading(false))
+  }, [savedId])
+
+  // Save execution log to DB when execution finishes, then refresh the list
+  const prevIsRunning = useRef(false)
+  useEffect(() => {
+    if (prevIsRunning.current && !isRunning && savedId && onSaveExecution) {
+      const isDone = events.some((e: AgentEvent) => e.type === 'done')
+      if (isDone) {
+        onSaveExecution(savedId, events, narrative)
+          .then(() => fetch(`${API_BASE}/api/flows/${savedId}/executions`))
+          .then(r => r.json())
+          .then((data: ExecutionLog[]) => setExecutionLogs(data))
+          .catch(() => {})
+      }
+    }
+    prevIsRunning.current = isRunning
+  }, [isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleRefine(instruction: string) {
     const result = await refine(title || 'Untitled flow', nodes, edges, instruction)
@@ -46,12 +84,11 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
 
   function handleLoadTemplate(template: FlowTemplate) {
     const rawNodes = template.nodes.map(n => ({ ...n, position: { x: 0, y: 0 } }))
-    const layouted = applyLayout(rawNodes, template.edges, layoutDirection)
-    setNodes(layouted)
+    setNodes(applyLayout(rawNodes, template.edges, layoutDirection))
     setEdges(template.edges)
     setTitle(template.title)
     setSavedId(null)
-    setShowExecution(false)
+    setActivePanel('none')
     clear()
   }
 
@@ -62,7 +99,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
       setEdges(result.edges)
       setTitle(result.title)
       setSavedId(null)
-      setShowExecution(false)
+      setActivePanel('none')
       clear()
     }
   }
@@ -75,7 +112,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
 
   async function handleExecute() {
     if (!hasFlow || isRunning) return
-    setShowExecution(true)
+    setActivePanel('live')
     clear()
     await execute(title || 'Untitled flow', getNodes(), edges)
   }
@@ -103,18 +140,13 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
   const handleNodesUpdate = useCallback((updated: Node[]) => setNodes(updated), [setNodes])
   const handleEdgesConnect = useCallback((updated: Edge[]) => setEdges(updated), [setEdges])
 
-  // Save execution log to DB when execution completes and the flow has been saved
-  const prevIsRunning = useRef(false)
-  useEffect(() => {
-    if (prevIsRunning.current && !isRunning && savedId && onSaveExecution) {
-      const isDone = events.some((e: AgentEvent) => e.type === 'done')
-      if (isDone) {
-        onSaveExecution(savedId, events, narrative).catch(() => {})
-      }
-    }
-    prevIsRunning.current = isRunning
-  }, [isRunning]) // eslint-disable-line react-hooks/exhaustive-deps
+  async function handleDeleteExecution(executionId: string) {
+    if (!savedId) return
+    await onDeleteExecution?.(savedId, executionId)
+    setExecutionLogs(prev => prev.filter(l => l.id !== executionId))
+  }
 
+  // Simulation node highlighting
   const { activeNodeId, completedNodeIds } = useMemo(() => {
     const analyses = events.filter(
       (e): e is ToolResultEvent => e.type === 'tool_result' && e.tool === 'log_step_analysis',
@@ -133,6 +165,8 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
 
     return { activeNodeId, completedNodeIds }
   }, [events, nodes])
+
+  const showPanel = activePanel !== 'none'
 
   return (
     <div className="flex h-full">
@@ -195,6 +229,19 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
                   <Save size={13} />
                   {savedId ? 'Saved' : 'Save'}
                 </button>
+                {savedId && (
+                  <button
+                    onClick={() => setActivePanel(p => p === 'logs' ? 'none' : 'logs')}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs transition-colors ${
+                      activePanel === 'logs'
+                        ? 'border-violet-500/40 bg-violet-500/10 text-violet-400'
+                        : 'border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+                    }`}
+                  >
+                    <HistoryIcon size={13} />
+                    Logs{executionLogs.length > 0 ? ` (${executionLogs.length})` : ''}
+                  </button>
+                )}
                 <button
                   onClick={handleExecute}
                   disabled={isRunning}
@@ -206,9 +253,9 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
               </div>
             </div>
 
-            {/* Canvas + Execution panel split */}
+            {/* Canvas + bottom panel */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              <div ref={canvasRef} className={showExecution ? 'h-[55%]' : 'flex-1'}>
+              <div ref={canvasRef} className={showPanel ? 'h-[55%]' : 'flex-1'}>
                 <FlowCanvas
                   nodes={nodes}
                   edges={edges}
@@ -223,13 +270,24 @@ function FlowGeneratorInner({ onSave, onSaveExecution, initialFlow }: FlowGenera
                 />
               </div>
 
-              {showExecution && (
+              {activePanel === 'live' && (
                 <div className="h-[45%] overflow-hidden">
                   <ExecutionPanel
                     events={events}
                     narrative={narrative}
                     isRunning={isRunning}
-                    onClose={() => setShowExecution(false)}
+                    onClose={() => setActivePanel('none')}
+                  />
+                </div>
+              )}
+
+              {activePanel === 'logs' && (
+                <div className="h-[45%] overflow-hidden">
+                  <ExecutionLogsPanel
+                    logs={executionLogs}
+                    isLoading={logsLoading}
+                    onClose={() => setActivePanel('none')}
+                    onDelete={handleDeleteExecution}
                   />
                 </div>
               )}

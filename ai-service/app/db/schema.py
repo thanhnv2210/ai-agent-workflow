@@ -24,9 +24,16 @@ CREATE TABLE IF NOT EXISTS workflow.execution_logs (
     flow_id     UUID        REFERENCES workflow.flows(id) ON DELETE CASCADE,
     events      JSONB       NOT NULL DEFAULT '[]',
     narrative   TEXT        NOT NULL DEFAULT '',
+    version     INTEGER     NOT NULL DEFAULT 1,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 )
 """
 
-MIGRATIONS: list[str] = [_CREATE_SCHEMA, _CREATE_FLOWS, _CREATE_EXECUTION_LOGS]
+# Idempotent column additions for existing deployments
+_ADD_VERSION_COLUMN = """
+ALTER TABLE workflow.execution_logs
+ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1
+"""
+
+MIGRATIONS: list[str] = [_CREATE_SCHEMA, _CREATE_FLOWS, _CREATE_EXECUTION_LOGS, _ADD_VERSION_COLUMN]
