@@ -31,7 +31,7 @@ export function useAgentExecutor() {
   const [isRunning, setIsRunning] = useState(false)
   const [narrative, setNarrative] = useState('')
 
-  const execute = useCallback(async (title: string, nodes: Node[], edges: Edge[]) => {
+  const execute = useCallback(async (title: string, nodes: Node[], edges: Edge[], templateId?: string) => {
     setEvents([])
     setNarrative('')
     setIsRunning(true)
@@ -44,6 +44,7 @@ export function useAgentExecutor() {
           title,
           nodes: nodes.map(n => ({ id: n.id, data: n.data })),
           edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, label: e.label ?? '' })),
+          template_id: templateId ?? null,
         }),
       })
 

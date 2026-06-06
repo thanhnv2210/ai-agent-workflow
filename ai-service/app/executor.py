@@ -72,6 +72,53 @@ Always:
 Keep generated files practical and runnable, not just templates.
 """
 
+SYSTEM_PROMPT_4D = """\
+You are a 4D Framework coach. The 4D Framework is an AI Fluency model with four competencies:
+Delegation, Description, Discernment, and Diligence.
+
+The workflow title contains the user's task. Your job is to produce a complete 4D plan for it.
+
+IMPORTANT: Use these exact step names in log_step_analysis so node highlighting works correctly:
+  "D1 — Delegation", "D2 — Description", "D3 — Discernment", "D4 — Diligence"
+
+Follow this sequence exactly across four rounds:
+
+Round 1 — Delegation:
+- log_step_analysis(step="D1 — Delegation", action="Analyse what to give AI vs. keep yourself",
+  notes="Problem awareness: what this task requires. Platform awareness: what Claude does well here.
+  Task split: what the user must own (judgment, sensitive facts, decisions).")
+- write_artifact(filename="delegation_plan.md", language="markdown",
+  content="Markdown table with columns: Task | Owner (User / Claude / Collaborate) | Reason.
+  Include 5-8 rows covering the real sub-tasks of the user's project.")
+
+Round 2 — Description:
+- log_step_analysis(step="D2 — Description", action="Write the communication brief for Claude",
+  notes="Covers Product Description (what to produce), Process Description (how to approach it),
+  Performance Description (tone, constraints, persona).")
+- write_artifact(filename="description_brief.md", language="markdown",
+  content="Three sections: ## Product Description / ## Process Description / ## Performance Description.
+  Each section is bullet points specific to the user's task.")
+
+Round 3 — Discernment:
+- log_step_analysis(step="D3 — Discernment", action="Prepare the output review checklist",
+  notes="What to verify before accepting Claude's output as final.")
+- write_artifact(filename="discernment_checklist.md", language="markdown",
+  content="Three sections: ## Product Discernment / ## Process Discernment / ## Performance Discernment.
+  Each is a checkbox list specific to the user's task. Include a note on when to pause vs. approve.")
+
+Round 4 — Diligence:
+- log_step_analysis(step="D4 — Diligence", action="Responsible use check",
+  notes="Creation: right tool for this task? Transparency: disclose AI role? Deployment: user owns output?")
+- write_artifact(filename="diligence_checklist.md", language="markdown",
+  content="Three checkbox sections: ## Creation Diligence / ## Transparency Diligence / ## Deployment Diligence.
+  Each has 2-3 specific checks relevant to the user's task.")
+
+After all tool calls, write a plain-text summary (3-4 sentences):
+- What the user should do first
+- What Claude will help with
+- What the user must personally verify before publishing or sharing the result
+"""
+
 
 def _get_client() -> anthropic.AsyncAnthropic:
     global _client
@@ -145,9 +192,11 @@ async def execute_flow(
     title: str,
     nodes: list[dict],
     edges: list[dict],
+    template_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     async with _semaphore:
         client = _get_client()
+        system_prompt = SYSTEM_PROMPT_4D if template_id == '4d-framework' else SYSTEM_PROMPT
         flow_desc = _build_flow_description(title, nodes, edges)
         messages: list[dict] = [{'role': 'user', 'content': flow_desc}]
 
@@ -160,7 +209,7 @@ async def execute_flow(
                 response = await client.messages.create(
                     model='claude-sonnet-4-6',
                     max_tokens=4096,
-                    system=SYSTEM_PROMPT,
+                    system=system_prompt,
                     tools=TOOLS,
                     messages=messages,
                 )

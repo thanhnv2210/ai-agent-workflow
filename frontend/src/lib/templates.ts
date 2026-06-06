@@ -10,6 +10,29 @@ export interface FlowTemplate {
 
 export const TEMPLATES: FlowTemplate[] = [
   {
+    id: '4d-framework',
+    title: '4D Framework — AI Fluency',
+    description: 'Delegation → Description → Discernment loop → Diligence',
+    nodes: [
+      { id: 'n1', type: 'default', data: { label: 'Your Task' } },
+      { id: 'n2', type: 'default', data: { label: 'D1 — Delegation' } },
+      { id: 'n3', type: 'default', data: { label: 'D2 — Description' } },
+      { id: 'n4', type: 'default', data: { label: 'D3 — Discernment' } },
+      { id: 'n5', type: 'default', data: { label: 'Output acceptable?' } },
+      { id: 'n6', type: 'default', data: { label: 'D4 — Diligence' } },
+      { id: 'n7', type: 'default', data: { label: 'Deploy / Share' } },
+    ],
+    edges: [
+      { id: 'en1-n2', source: 'n1', target: 'n2', label: 'start' },
+      { id: 'en2-n3', source: 'n2', target: 'n3', label: 'plan agreed' },
+      { id: 'en3-n4', source: 'n3', target: 'n4', label: 'Claude executes' },
+      { id: 'en4-n5', source: 'n4', target: 'n5', label: 'review output' },
+      { id: 'en5-n3', source: 'n5', target: 'n3', label: 'no — refine' },
+      { id: 'en5-n6', source: 'n5', target: 'n6', label: 'yes' },
+      { id: 'en6-n7', source: 'n6', target: 'n7', label: 'diligence done' },
+    ],
+  },
+  {
     id: 'cicd',
     title: 'CI/CD Pipeline',
     description: 'Push code → test → build → deploy',

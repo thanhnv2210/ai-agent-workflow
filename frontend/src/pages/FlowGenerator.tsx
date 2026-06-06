@@ -27,6 +27,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, onDeleteExecution, initia
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialFlow?.edges ?? [])
   const [title, setTitle] = useState(initialFlow?.title ?? '')
   const [savedId, setSavedId] = useState<string | null>(initialFlow?.id ?? null)
+  const [templateId, setTemplateId] = useState<string | undefined>(undefined)
   const [copied, setCopied] = useState(false)
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('TB')
 
@@ -88,6 +89,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, onDeleteExecution, initia
     setEdges(template.edges)
     setTitle(template.title)
     setSavedId(null)
+    setTemplateId(template.id)
     setActivePanel('none')
     clear()
   }
@@ -99,6 +101,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, onDeleteExecution, initia
       setEdges(result.edges)
       setTitle(result.title)
       setSavedId(null)
+      setTemplateId(undefined)
       setActivePanel('none')
       clear()
     }
@@ -114,7 +117,7 @@ function FlowGeneratorInner({ onSave, onSaveExecution, onDeleteExecution, initia
     if (!hasFlow || isRunning) return
     setActivePanel('live')
     clear()
-    await execute(title || 'Untitled flow', getNodes(), edges)
+    await execute(title || 'Untitled flow', getNodes(), edges, templateId)
   }
 
   async function handleShare() {

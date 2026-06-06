@@ -51,6 +51,7 @@ class ExecuteRequest(BaseModel):
     title: str
     nodes: list[dict]
     edges: list[dict]
+    template_id: str | None = None
 
 
 class RefineRequest(BaseModel):
@@ -147,7 +148,7 @@ async def execute(req: ExecuteRequest):
     if not req.nodes:
         raise HTTPException(status_code=422, detail='No nodes to execute')
     return StreamingResponse(
-        execute_flow(req.title, req.nodes, req.edges),
+        execute_flow(req.title, req.nodes, req.edges, req.template_id),
         media_type='text/event-stream',
         headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'},
     )
