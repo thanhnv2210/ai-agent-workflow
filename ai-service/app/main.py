@@ -10,7 +10,7 @@ from app.config import settings
 from app.db.database import close_pool, get_pool
 from app.db.schema import MIGRATIONS
 from app.executor import execute_flow
-from app.llm import generate_flow, refine_flow
+from app.llm import generate_flow, generate_flow_bpmn, refine_flow
 from app.services import executions as execution_service
 from app.services import flows as flow_service
 
@@ -45,6 +45,7 @@ app.add_middleware(
 
 class GenerateRequest(BaseModel):
     description: str
+    mode: str | None = None
 
 
 class ExecuteRequest(BaseModel):
@@ -176,7 +177,7 @@ async def generate(req: GenerateRequest):
     if not req.description.strip():
         raise HTTPException(status_code=422, detail='description is required')
     try:
-        result = await generate_flow(req.description)
+        result = await (generate_flow_bpmn(req.description) if req.mode == 'bpmn' else generate_flow(req.description))
         return GenerateResponse(**result)
     except (ValueError, KeyError) as e:
         log.error('Flow generation failed: %s', e)

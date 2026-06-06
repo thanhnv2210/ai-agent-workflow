@@ -103,6 +103,72 @@ async def generate_flow(description: str) -> dict:
         return json.loads(raw)
 
 
+BPMN_SYSTEM_PROMPT = """\
+You are a BPMN (Business Process Model and Notation) diagram generator.
+Convert user descriptions into structured BPMN JSON using standard element types.
+
+Return ONLY valid JSON — no markdown fences, no explanations, just the JSON object.
+
+Node types — you MUST use exactly these strings in the "type" field:
+- "bpmn-start"   → Start Event: the single entry point of the process
+- "bpmn-end"     → End Event: process termination (can have multiple)
+- "bpmn-task"    → Task/Activity: a unit of work (use action verbs: Review, Send, Approve)
+- "bpmn-gateway" → Gateway: a decision or parallel split (label as a yes/no question)
+
+Schema:
+{
+  "title": "short descriptive title",
+  "nodes": [
+    { "id": "1", "type": "bpmn-start",   "data": { "label": "Start" },              "position": { "x": 0, "y": 0 } },
+    { "id": "2", "type": "bpmn-task",    "data": { "label": "Submit application" }, "position": { "x": 0, "y": 120 } },
+    { "id": "3", "type": "bpmn-gateway", "data": { "label": "Approved?" },          "position": { "x": 0, "y": 240 } },
+    { "id": "4", "type": "bpmn-end",     "data": { "label": "End" },                "position": { "x": 0, "y": 360 } }
+  ],
+  "edges": [
+    { "id": "e1-2",  "source": "1", "target": "2", "label": "" },
+    { "id": "e2-3",  "source": "2", "target": "3", "label": "submitted" },
+    { "id": "e3-4",  "source": "3", "target": "4", "label": "yes" },
+    { "id": "e3-5",  "source": "3", "target": "5", "label": "no" }
+  ]
+}
+
+Rules:
+- Always include exactly one bpmn-start node
+- Always include at least one bpmn-end node
+- Every decision point must be a bpmn-gateway with a yes/no question as label
+- Label all edges leaving a gateway with the condition (yes/no or a short phrase)
+- Node ids must be unique strings ("1", "2", "3", ...)
+- Every edge source and target must reference an existing node id
+- Keep labels concise (2-5 words)
+- Return 4-12 nodes for typical flows
+"""
+
+BPMN_FEW_SHOT: list[dict] = [
+    {
+        'role': 'user',
+        'content': 'An employee submits a leave request, the manager reviews it, and HR either approves or rejects it.',
+    },
+    {
+        'role': 'assistant',
+        'content': '{"title":"Leave Request Process","nodes":[{"id":"1","type":"bpmn-start","data":{"label":"Start"},"position":{"x":250,"y":0}},{"id":"2","type":"bpmn-task","data":{"label":"Submit leave request"},"position":{"x":250,"y":120}},{"id":"3","type":"bpmn-task","data":{"label":"Manager reviews request"},"position":{"x":250,"y":240}},{"id":"4","type":"bpmn-gateway","data":{"label":"Manager approved?"},"position":{"x":250,"y":360}},{"id":"5","type":"bpmn-task","data":{"label":"HR processes approval"},"position":{"x":100,"y":480}},{"id":"6","type":"bpmn-task","data":{"label":"Notify rejection"},"position":{"x":400,"y":480}},{"id":"7","type":"bpmn-end","data":{"label":"End"},"position":{"x":250,"y":600}}],"edges":[{"id":"e1-2","source":"1","target":"2","label":""},{"id":"e2-3","source":"2","target":"3","label":"submitted"},{"id":"e3-4","source":"3","target":"4","label":"reviewed"},{"id":"e4-5","source":"4","target":"5","label":"yes"},{"id":"e4-6","source":"4","target":"6","label":"no"},{"id":"e5-7","source":"5","target":"7","label":"approved"},{"id":"e6-7","source":"6","target":"7","label":"rejected"}]}',
+    },
+]
+
+
+async def generate_flow_bpmn(description: str) -> dict:
+    async with _semaphore:
+        messages = BPMN_FEW_SHOT + [{'role': 'user', 'content': description}]
+        client = _get_client()
+        response = await client.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=2048,
+            system=BPMN_SYSTEM_PROMPT,
+            messages=messages,
+        )
+        raw = _strip_fences(response.content[0].text)
+        return json.loads(raw)
+
+
 REFINE_SYSTEM_PROMPT = """\
 You are a workflow diagram editor. Given an existing workflow diagram and a user instruction, \
 return the updated diagram as JSON.

@@ -11,6 +11,7 @@ const NodeDataSchema = z.object({
 
 export const FlowNodeSchema = z.object({
   id: z.string().min(1),
+  type: z.string().optional(),
   data: NodeDataSchema,
   position: NodePositionSchema,
 })

@@ -11,7 +11,7 @@ interface FlowGeneratorState {
 }
 
 interface FlowGeneratorResult extends FlowGeneratorState {
-  generate: (description: string) => Promise<{ title: string; nodes: Node[]; edges: Edge[] } | null>
+  generate: (description: string, mode?: string) => Promise<{ title: string; nodes: Node[]; edges: Edge[] } | null>
 }
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8013'
@@ -20,7 +20,7 @@ export function useFlowGenerator(): FlowGeneratorResult {
   const [status, setStatus] = useState<Status>('idle')
   const [error, setError] = useState<string | null>(null)
 
-  async function generate(description: string) {
+  async function generate(description: string, mode?: string) {
     if (!description.trim()) return null
     setStatus('loading')
     setError(null)
@@ -29,7 +29,7 @@ export function useFlowGenerator(): FlowGeneratorResult {
       const res = await fetch(`${API_BASE}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description }),
+        body: JSON.stringify({ description, mode: mode ?? null }),
       })
 
       if (!res.ok) {
@@ -42,7 +42,7 @@ export function useFlowGenerator(): FlowGeneratorResult {
 
       const rawNodes: Node[] = flow.nodes.map(n => ({
         id: n.id,
-        type: 'default',
+        type: n.type ?? 'default',
         data: { label: n.data.label },
         position: n.position,
       }))

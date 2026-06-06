@@ -16,6 +16,9 @@ import '@xyflow/react/dist/style.css'
 import { useTheme } from '@/components/ThemeProvider'
 import { applyLayout, type LayoutDirection } from '@/lib/layout'
 import { AlignEndHorizontal, AlignEndVertical, Shuffle } from 'lucide-react'
+import { BPMN_NODE_TYPES } from '@/components/nodes/BpmnNodes'
+
+const NODE_TYPES = { ...BPMN_NODE_TYPES }
 
 const LAYOUT_OPTIONS: { dir: LayoutDirection; label: string; Icon: typeof Shuffle }[] = [
   { dir: 'TB',      label: 'Vertical',   Icon: AlignEndVertical },
@@ -99,6 +102,7 @@ export function FlowCanvas({
       <ReactFlow
         nodes={displayNodes}
         edges={edges}
+        nodeTypes={NODE_TYPES}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

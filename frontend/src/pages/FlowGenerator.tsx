@@ -94,8 +94,8 @@ function FlowGeneratorInner({ onSave, onSaveExecution, onDeleteExecution, initia
     clear()
   }
 
-  async function handleGenerate(description: string) {
-    const result = await generate(description)
+  async function handleGenerate(description: string, mode: string) {
+    const result = await generate(description, mode)
     if (result) {
       setNodes(applyLayout(result.nodes, result.edges, layoutDirection))
       setEdges(result.edges)

@@ -11,7 +11,7 @@ const EXAMPLE_CHIPS = [
 ]
 
 interface GeneratorPanelProps {
-  onGenerate: (description: string) => void
+  onGenerate: (description: string, mode: string) => void
   onLoadTemplate: (template: FlowTemplate) => void
   onRefine: (instruction: string) => void
   isLoading: boolean
@@ -25,15 +25,16 @@ export function GeneratorPanel({ onGenerate, onLoadTemplate, onRefine, isLoading
   const [text, setText] = useState('')
   const [refineText, setRefineText] = useState('')
   const [showTemplates, setShowTemplates] = useState(false)
+  const [mode, setMode] = useState<'standard' | 'bpmn'>('standard')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (text.trim() && !isLoading) onGenerate(text.trim())
+    if (text.trim() && !isLoading) onGenerate(text.trim(), mode)
   }
 
   function handleChip(chip: string) {
     setText(chip)
-    if (!isLoading) onGenerate(chip)
+    if (!isLoading) onGenerate(chip, mode)
   }
 
   return (
@@ -43,6 +44,32 @@ export function GeneratorPanel({ onGenerate, onLoadTemplate, onRefine, isLoading
         <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
           Claude will convert your description into an interactive diagram.
         </p>
+      </div>
+
+      {/* Mode toggle */}
+      <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--background)] p-1 self-start">
+        <button
+          type="button"
+          onClick={() => setMode('standard')}
+          className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+            mode === 'standard'
+              ? 'bg-violet-600 text-white'
+              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+          }`}
+        >
+          Standard
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('bpmn')}
+          className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+            mode === 'bpmn'
+              ? 'bg-violet-600 text-white'
+              : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
+          }`}
+        >
+          BPMN
+        </button>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
